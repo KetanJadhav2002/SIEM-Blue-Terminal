@@ -1,6 +1,10 @@
 # SIEM-Blue-Terminal
 This Windows tool used to monitor System Logs, Network Traffic, Processes etc. on localhost and it collects data only from local machine it stores logs before logout
 
+First Time run python3 init_db.py
+Then run app.py
+
+
 Requirement is :
 
 1. System-Level Prerequisites (Drivers)
