@@ -79,8 +79,8 @@ proto_distribution = {}
 def get_db():
     return pymysql.connect(
         host="localhost",
-        user="Ketan",
-        password="Ketan@1407#2002",
+        user="Admin",
+        password="Admin@123",
         database="SIEM_DB",
         cursorclass=pymysql.cursors.DictCursor
     )
