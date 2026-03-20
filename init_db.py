@@ -7,8 +7,8 @@ def init_db():
         # 1. Connect to MySQL Server
         db = pymysql.connect(
             host="localhost",
-            user="Ketan",
-            password="Ketan@1407#2002"
+            user="Admin",
+            password="Admin@123"
         )
         cursor = db.cursor()
         print("[+] Connected to MySQL.")
@@ -27,13 +27,13 @@ def init_db():
         """)
         
         # 4. Insert User
-        cursor.execute("SELECT * FROM users WHERE username='Ketan'")
+        cursor.execute("SELECT * FROM users WHERE username='Admin'")
         if not cursor.fetchone():
-            cursor.execute("INSERT INTO users (username, password) VALUES ('Ketan', 'Ketan@1407#2002')")
+            cursor.execute("INSERT INTO users (username, password) VALUES ('Admin', 'Admin@123')")
             db.commit()
-            print("[+] User 'Ketan' created.")
+            print("[+] User 'Admin' created.")
         else:
-            print("[!] User 'Ketan' already exists.")
+            print("[!] User 'Admin' already exists.")
 
         db.close()
         print("--- Setup Completed Successfully! ---")
