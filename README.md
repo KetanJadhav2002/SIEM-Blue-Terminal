@@ -17,7 +17,7 @@ The tool uses MySQL to manage the login session for the user Ketan.
 Software: Install XAMPP or WAMP.
 Configuration:
 Start the MySQL module in the XAMPP Control Panel.
-The database user Ketan with password Ketan@1407#2002 must have "Global Privileges" (Check All) in phpMyAdmin.
+The database user Admin with password Admin@123 must have "Global Privileges" (Check All) in phpMyAdmin.
 Action: You must run python init_db.py once before starting the app to create the SIEM_DB.
 
 3. Python Environment
