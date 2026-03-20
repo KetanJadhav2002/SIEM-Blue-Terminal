@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SIEM-Blue Login</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #00050a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: "Times New Roman", serif; margin: 0; }
+        .card { background: #001221; padding: 50px; border: 1px solid #00d4ff; border-radius: 8px; width: 380px; text-align: center; }
+        h1 { font-size: 2.5em; margin-bottom: 30px; }
+        .siem { color: #00d4ff; } .blue { color: #00ff41; }
+        input { display: block; width: 100%; margin-bottom: 20px; padding: 12px; background: #000; border: 1px solid #00d4ff; color: #00ff41; outline: none; }
+        .btn { background: #00d4ff; color: #000; font-weight: bold; width: 100%; border: none; padding: 12px; cursor: pointer; font-family: "Times New Roman"; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1><span class="siem">SIEM-</span><span class="blue">Blue</span></h1>
+        <form action="/auth" method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit" class="btn">Login</button>
+        </form>
+    </div>
+</body>
+</html>

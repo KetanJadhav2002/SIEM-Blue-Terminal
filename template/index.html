@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini-SIEM Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #2c2c2c; color: white; }
+        .header { background: #111; padding: 10px; display: flex; justify-content: space-between; }
+        .container { padding: 20px; }
+        .search-bar { background: #444; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        input[type="text"] { width: 80%; padding: 10px; border: none; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        .chart-container { width: 400px; background: #333; padding: 20px; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #555; padding: 8px; text-align: left; }
+        th { background: #444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>>_ MINI-SIEM ENTERPRISE</h2>
+        <div>User: admin | <a href="/login" style="color: #ff4c4c;">Logout</a></div>
+    </div>
+
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="splQuery" placeholder="search process_name (e.g., search python)">
+            <button onclick="runSearch()">Search</button>
+        </div>
+
+        <div style="display: flex; gap: 20px;">
+            <div class="chart-container">
+                <h3>Top CPU Usage by Process</h3>
+                <canvas id="cpuChart"></canvas>
+            </div>
+            
+            <div style="flex-grow: 1;">
+                <h3>Process Logs</h3>
+                <table id="resultsTable">
+                    <thead>
+                        <tr><th>PID</th><th>Name</th><th>User</th><th>CPU %</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function runSearch() {
+            const query = document.getElementById('splQuery').value;
+            fetch('/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'query=' + encodeURIComponent(query)
+            })
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.querySelector('#resultsTable tbody');
+                tbody.innerHTML = '';
+                data.forEach(proc => {
+                    tbody.innerHTML += `<tr><td>${proc.pid}</td><td>${proc.name}</td><td>${proc.username}</td><td>${proc.cpu_percent}</td></tr>`;
+                });
+            });
+        }
+
+        // Initialize Chart
+        const ctx = document.getElementById('cpuChart').getContext('2d');
+        const cpuData = {{ top_cpu|tojson }};
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: cpuData.map(d => d.name),
+                datasets: [{
+                    label: 'CPU %',
+                    data: cpuData.map(d => d.cpu_percent),
+                    backgroundColor: '#4CAF50'
+                }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        // Load initial data
+        runSearch();
+    </script>
+</body>
+</html>

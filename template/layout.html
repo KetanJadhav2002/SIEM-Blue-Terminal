@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SIEM-Blue Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #00050a; color: #00d4ff; font-family: 'Courier New', monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 70px; background: #001221; border-right: 1px solid #00d4ff; display: flex; flex-direction: column; align-items: center; padding-top: 20px; flex-shrink: 0; }
+        .sidebar button { background: none; border: none; color: #00d4ff; font-size: 26px; margin: 22px 0; cursor: pointer; transition: 0.2s; }
+        .sidebar button:hover { color: #00ff41; transform: scale(1.2); }
+        .main { flex-grow: 1; display: flex; flex-direction: column; padding: 0 20px; height: 100vh; }
+        .sticky-header { position: sticky; top: 0; background: #00050a; z-index: 10; padding: 20px 0; border-bottom: 1px solid #002b4d; flex-shrink: 0; }
+        .scroll-content { flex-grow: 1; overflow-y: auto; overflow-x: hidden; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead th { position: sticky; top: 0; background: #00d4ff; color: #000; padding: 12px 8px; text-align: left; z-index: 20; font-size: 13px; }
+        td { padding: 10px 8px; border-bottom: 1px solid #002b4d; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #00d4ff; }
+        tr:hover td { background: rgba(0, 212, 255, 0.1); color: #00ff41; }
+        .search-box { background: #000; border: 1px solid #00d4ff; color: #00ff41; padding: 10px; width: 400px; outline: none; }
+        .btn-blue { background: #00d4ff; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-right: 5px; }
+        .db-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 0; }
+        .chart-card { background: #001221; border: 1px solid #002b4d; padding: 15px; text-align: center; }
+        .full-row { grid-column: span 2; min-height: 400px; }
+        @media print { .sidebar, .sticky-header, .btn-blue { display: none !important; } .main { margin: 0; width: 100%; } body { background: white; color: black; } }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <button onclick="nav('dash')" title="Dashboards">📊</button>
+        <button onclick="nav('logs')" title="Logs">📜</button>
+        <button onclick="nav('process')" title="Process">⚙️</button>
+        <button onclick="nav('network')" title="Network">🌐</button>
+        <button onclick="nav('reports')" title="Reports">📋</button>
+        <button onclick="nav('notes')" title="Notes">📝</button>
+        <button onclick="location.href='/logout'" title="Logout">🚪</button>
+    </div>
+    <div class="main" id="vp">
+        <div class="sticky-header"><h1>>_ STANDBY...</h1></div>
+    </div>
+    <script>
+        let liveRefresh = null;
+        let activeCharts = {};
+
+        async function nav(sec) {
+            if(liveRefresh) clearInterval(liveRefresh);
+            const vp = document.getElementById('vp');
+            if(sec === 'logs') {
+                vp.innerHTML = `<div class="sticky-header"><h2>LOG EXPLORER</h2><input type="text" id="logS" class="search-box" placeholder="Channel='Security'"><button class="btn-blue" onclick="getLogs()">SEARCH</button><button class="btn-blue" style="background:#00ff41" onclick="exportCSV()">EXPORT CSV</button></div>
+                <div class="scroll-content"><table><thead><tr><th style="width:10%">ID</th><th style="width:25%">Timestamp</th><th style="width:15%">Channel</th><th style="width:50%">Source</th></tr></thead><tbody id="logBody"></tbody></table></div>`;
+                getLogs();
+            } else if(sec === 'process') {
+                vp.innerHTML = `<div class="sticky-header"><h2>PROCESS MONITOR</h2></div><div class="scroll-content"><table><thead><tr><th style="width:15%">PID</th><th style="width:40%">Process Name</th><th style="width:20%">CPU %</th><th style="width:25%">RAM %</th></tr></thead><tbody id="procBody"></tbody></table></div>`;
+                const updProc = async () => {
+                    const r = await fetch('/api/process'); const d = await r.json();
+                    document.getElementById('procBody').innerHTML = d.map(p=>`<tr><td>${p.pid}</td><td>${p.name}</td><td>${p.cpu_percent}%</td><td>${p.memory_percent.toFixed(2)}%</td></tr>`).join('');
+                };
+                updProc(); liveRefresh = setInterval(updProc, 3000);
+            } else if(sec === 'dash') {
+                vp.innerHTML = `<div class="sticky-header"><h2>DASHBOARD (CPU: <span id="cpuV">0</span>%)</h2></div><div class="scroll-content"><div class="db-grid"><div class="chart-card"><h3>RAM LOAD</h3><canvas id="ramC"></canvas></div><div class="chart-card"><h3>DISK LOAD</h3><canvas id="diskC"></canvas></div><div class="chart-card full-row"><h3>PROTOCOL DISTRIBUTION</h3><canvas id="netC"></canvas></div></div></div>`;
+                initDash(); liveRefresh = setInterval(updateDash, 2000);
+            } else if(sec === 'network') {
+                vp.innerHTML = `<div class="sticky-header"><h2>NETWORK ANALYZER</h2><input type="text" id="netS" class="search-box" placeholder="Filter IP..."></div><div class="scroll-content"><table><thead><tr><th style="width:8%">No</th><th style="width:12%">Time</th><th style="width:20%">Source</th><th style="width:20%">Dest</th><th style="width:12%">Proto</th><th style="width:28%">Info</th></tr></thead><tbody id="netBody"></tbody></table></div>`;
+                const updNet = async () => {
+                    const q = document.getElementById('netS')?.value || '';
+                    const r = await fetch('/api/network?q='+encodeURIComponent(q)); const d = await r.json();
+                    document.getElementById('netBody').innerHTML = d.slice().reverse().map(n=>`<tr><td>${n.No}</td><td>${n.Time}</td><td>${n.Source}</td><td>${n.Destination}</td><td style="color:#00ff41;font-weight:bold">${n.Protocol}</td><td>${n.Info}</td></tr>`).join('');
+                };
+                updNet(); liveRefresh = setInterval(updNet, 1000);
+            } else if(sec === 'reports') {
+                const now = new Date().toLocaleString();
+                vp.innerHTML = `<div class="sticky-header"><h2>SECURITY REPORT</h2><button class="btn-blue" onclick="window.print()">PRINT PDF</button></div><div class="scroll-content"><p>Generated: ${now}</p><canvas id="repC"></canvas></div>`;
+                const r = await fetch('/api/stats'); const d = await r.json();
+                new Chart(document.getElementById('repC'), { type: 'bar', data: { labels: Object.keys(d.network_proto), datasets:[{label:'Packets', data:Object.values(d.network_proto), backgroundColor:'#00ff41'}] }, options:{indexAxis:'y'} });
+            } else if(sec === 'notes') {
+                vp.innerHTML = `<div class="sticky-header"><h2>USER MANUAL</h2></div><div class="scroll-content" style="padding:20px; color:#00ff41"><p>Search: Channel="Security". Process: Includes PID 0. Export: CSV with timestamps.</p></div>`;
+            }
+        }
+
+        async function getLogs() {
+            const q = document.getElementById('logS').value;
+            const r = await fetch('/api/logs?q='+encodeURIComponent(q)); const d = await r.json();
+            document.getElementById('logBody').innerHTML = d.map(l => `<tr><td>${l.EventID}</td><td>${l.Timestamp}</td><td>${l.Channel}</td><td>${l.Source}</td></tr>`).join('');
+        }
+
+        async function initDash() {
+            const r = await fetch('/api/stats'); const d = await r.json();
+            activeCharts.ram = new Chart(document.getElementById('ramC'), { type: 'pie', data: { labels: ['Used','Free'], datasets:[{data:[d.ram.used, d.ram.free], backgroundColor:['#00d4ff','#333'], borderColor:'#00d4ff'}] } });
+            activeCharts.disk = new Chart(document.getElementById('diskC'), { type: 'pie', data: { labels: ['Used','Free'], datasets:[{data:[d.disk.used, d.disk.free], backgroundColor:['#00d4ff','#333'], borderColor:'#00d4ff'}] } });
+            activeCharts.net = new Chart(document.getElementById('netC'), { type: 'bar', data: { labels: Object.keys(d.network_proto), datasets:[{label:'Packets', data:Object.values(d.network_proto), backgroundColor:'#00ff41'}] }, options:{ indexAxis: 'y' } });
+        }
+
+        async function updateDash() {
+            const r = await fetch('/api/stats'); const d = await r.json();
+            document.getElementById('cpuV').innerText = d.cpu;
+            activeCharts.ram.data.datasets[0].data = [d.ram.used, d.ram.free]; activeCharts.ram.update();
+            activeCharts.net.data.labels = Object.keys(d.network_proto); activeCharts.net.data.datasets[0].data = Object.values(d.network_proto); activeCharts.net.update();
+        }
+
+        function exportCSV() {
+            const now = new Date().toLocaleString();
+            let csv = `"SIEM-Blue Export At:","${now}"\n\nEventID,Timestamp,Channel,Source\n`;
+            document.querySelectorAll("#logBody tr").forEach(tr => {
+                let row = []; tr.querySelectorAll("td").forEach(td => row.push(`"${td.innerText}"`));
+                csv += row.join(",") + "\n";
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `Logs_${Date.now()}.csv`; a.click();
+        }
+        nav('dash');
+    </script>
+</body>
+</html>
