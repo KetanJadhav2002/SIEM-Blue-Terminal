@@ -17,7 +17,7 @@ You must run your Command Prompt (CMD), PowerShell, or VS Code as Administrator.
 Reason: Windows prevents non-admin users from reading the Security Log (logins) and sniffing raw network packets.
 
 2. Database Environment (XAMPP / MySQL)
-The tool uses MySQL to manage the login session for the user Ketan.
+The tool uses MySQL to manage the login session for the user Admin.
 Software: Install XAMPP or WAMP.
 Configuration:
 Start the MySQL module in the XAMPP Control Panel.
